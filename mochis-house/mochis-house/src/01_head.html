@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mochi's house</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --glass: rgba(248,249,246,0.84);
+  --glass-strong: rgba(250,251,249,0.95);
+  --ink: #18201c;
+  --ink-soft: #4a554f;
+  --line: rgba(24,32,28,0.12);
+  --accent: #2c6650;
+  --accent-hover: #245744;
+  --accent-ink: #ffffff;
+  --key-bg: rgba(24,32,28,0.07);
+  --scrim: rgba(10,16,13,0.42);
+  --shadow: 0 10px 34px rgba(8,18,13,0.20);
+  --focus: #2c6650;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --glass: rgba(20,26,23,0.80);
+    --glass-strong: rgba(20,26,23,0.94);
+    --ink: #eef2ee;
+    --ink-soft: #a9b5ae;
+    --line: rgba(255,255,255,0.12);
+    --accent: #93d0b1;
+    --accent-hover: #a9dcc2;
+    --accent-ink: #0d1a13;
+    --key-bg: rgba(255,255,255,0.09);
+    --scrim: rgba(0,0,0,0.55);
+    --focus: #93d0b1;
+  }
+}
+:root[data-theme="dark"]{
+  --glass: rgba(20,26,23,0.80);
+  --glass-strong: rgba(20,26,23,0.94);
+  --ink: #eef2ee;
+  --ink-soft: #a9b5ae;
+  --line: rgba(255,255,255,0.12);
+  --accent: #93d0b1;
+  --accent-hover: #a9dcc2;
+  --accent-ink: #0d1a13;
+  --key-bg: rgba(255,255,255,0.09);
+  --scrim: rgba(0,0,0,0.55);
+  --focus: #93d0b1;
+}
+*,*::before,*::after{ box-sizing: border-box; }
+html{ height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body{
+  height: 100%; margin: 0; overflow: hidden;
+  background: #1a201d; color: var(--ink);
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+  touch-action: none; overscroll-behavior: none;
+}
+#view{ position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: grab; }
+#view.locked{ cursor: none; }
+#view.dragging{ cursor: grabbing; }
+
+.glass{
+  background: var(--glass); color: var(--ink);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.hud{ position: fixed; z-index: 5; pointer-events: none; transition: opacity .35s ease; }
+.hud.hidden{ opacity: 0; }
+.hud button, .hud .clickable{ pointer-events: auto; }
+
+#room .rsep{ width: 1px; height: 16px; background: var(--line); }
+#clockBtn{ display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 2px 4px; border-radius: 8px; cursor: pointer; pointer-events: auto; }
+#clockBtn:hover{ background: var(--key-bg); }
+#clockBtn:focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+#clockBtn.paused{ opacity: 0.6; }
+#room{
+  top: calc(env(safe-area-inset-top, 0px) + 14px); left: calc(env(safe-area-inset-left, 0px) + 14px);
+  padding: 8px 14px 8px 12px; border-radius: 999px;
+  font-size: 14px; font-weight: 600; letter-spacing: .01em;
+  display: flex; align-items: center; gap: 8px;
+}
+#room .dot{ width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+#mapWrap{
+  top: calc(env(safe-area-inset-top, 0px) + 14px); right: calc(env(safe-area-inset-right, 0px) + 14px);
+  padding: 8px; border-radius: 14px;
+}
+#map{ display: block; width: 182px; height: 140px; border-radius: 8px; }
+
+#cross{
+  left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+  background: rgba(255,255,255,0.9); box-shadow: 0 0 0 1.5px rgba(0,0,0,0.35);
+}
+
+#cross{ transition: width .15s ease, height .15s ease, margin .15s ease, background-color .15s ease; }
+#cross.on{ width: 14px; height: 14px; margin: -7px 0 0 -7px; background: transparent; border: 2px solid rgba(255,255,255,0.95); box-shadow: 0 0 0 1.5px rgba(0,0,0,0.3); }
+#finds{
+  left: calc(env(safe-area-inset-left, 0px) + 14px); top: calc(env(safe-area-inset-top, 0px) + 62px);
+  padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; white-space: nowrap;
+}
+#finds b{ font-weight: 600; }
+#finds .sep{ width: 1px; height: 16px; background: var(--line); }
+#finds .fi{ display: inline-flex; align-items: center; gap: 5px; }
+#finds .fd{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+#shop{
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30;
+  width: min(560px, calc(100vw - 24px)); max-height: min(78vh, 640px); display: flex; flex-direction: column;
+  border-radius: 22px; padding: 20px 20px 16px; color: var(--ink); background: var(--glass-strong);
+}
+#shop.hidden{ display: none; }
+#shop header{ display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+#shop header > div:first-child{ flex: 1; }
+#shop h2{ font-family: 'Fraunces', Georgia, serif; font-size: 24px; font-weight: 600; margin: 0 0 2px; }
+#shop header p{ margin: 0; color: var(--ink-soft); font-size: 14px; }
+#shopMoney{ font-weight: 700; font-size: 18px; padding: 6px 12px; border-radius: 999px; background: var(--key-bg); }
+#shopClose{ width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--key-bg); color: var(--ink); font-size: 20px; cursor: pointer; }
+#shopClose:focus-visible, #shop .btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+#shopList{ overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+#shop .row{ display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--key-bg); }
+#shop .row.total{ background: transparent; border: 1px solid var(--line); }
+#shop .sw{ width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+#shop .tx{ flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#shop .tx b{ font-weight: 600; font-size: 15px; }
+#shop .tx span{ color: var(--ink-soft); font-size: 13px; }
+#shop .pr{ font-weight: 700; font-variant-numeric: tabular-nums; }
+#shop .btn{ padding: 8px 14px; font-size: 14px; }
+#shop .btn[disabled]{ opacity: 0.45; cursor: not-allowed; }
+#shop .empty{ color: var(--ink-soft); margin: 8px 2px; line-height: 1.5; }
+#shop footer{ margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); }
+#underwater{ position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .3s ease; background: radial-gradient(ellipse at 50% 40%, rgba(70,120,95,0.45), rgba(25,55,45,0.8)); }
+#underwater.on{ opacity: 1; }
+#heldBar{
+  left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%);
+  padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 500; white-space: nowrap;
+  display: flex; align-items: center; gap: 10px;
+}
+#heldBar b{ font-weight: 600; }
+#heldBar .sep{ width: 1px; height: 18px; background: var(--line); }
+body.touch #heldBar .deskOnly{ display: none; }
+#useBtn, #dropBtn, #altBtn, #throwBtn, #tools .touchBtn{ display: none; }
+#throwBtn.show{ display: inline-flex; }
+body:not(.touch) #throwBtn.show{ display: none; }
+body.touch #tools .touchBtn{ display: inline-flex; }
+#crouchBtn.on{ background: var(--accent); color: #fff; }
+#altBtn.show{ display: inline-flex; }
+body:not(.touch) #altBtn.show{ display: none; }
+#useBtn.show, #dropBtn.show{ display: inline-flex; }
+body:not(.touch) #useBtn.show, body:not(.touch) #dropBtn.show{ display: none; }
+#toast{
+  left: 50%; top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%);
+  padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+#prompt{
+  left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); transform: translateX(-50%);
+  padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap;
+  display: flex; align-items: center; gap: 10px;
+}
+.key{
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px;
+  border-radius: 7px; background: var(--key-bg); border: 1px solid var(--line);
+  font-size: 12.5px; font-weight: 600; color: var(--ink);
+}
+
+#tools{
+  right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex; gap: 8px; align-items: center;
+}
+.btn{
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ink);
+  height: 44px; padding: 0 16px; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: transform .15s ease, background-color .15s ease;
+}
+.btn:hover{ background: var(--glass-strong); }
+.btn:active{ transform: scale(.97); }
+.btn svg{ width: 18px; height: 18px; flex: none; }
+.btn.icon{ width: 44px; padding: 0; justify-content: center; }
+.btn.primary{ background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary:hover{ background: var(--accent-hover); }
+button:focus-visible{ outline: 3px solid var(--focus); outline-offset: 2px; }
+
+#petBtn{ display: none; }
+body.touch #petBtn.show{ display: inline-flex; }
+body.touch #prompt{ display: none; }
+
+#hint{
+  left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  padding: 8px 12px; border-radius: 14px; font-size: 13px; color: var(--ink-soft);
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; max-width: min(560px, calc(100vw - 200px));
+}
+#hint span{ display: inline-flex; align-items: center; gap: 6px; }
+body.touch #hint{ display: none; }
+
+#help{
+  right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+  width: min(300px, calc(100vw - 28px)); padding: 16px 18px; border-radius: 16px; font-size: 14px;
+}
+#help h2{ font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 18px; margin: 0 0 10px; }
+#help dl{ display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0; align-items: center; }
+#help dt{ display: flex; gap: 4px; }
+#help dd{ margin: 0; color: var(--ink-soft); }
+#help dl .touchOnly{ display: none; }
+body.touch #help dl dt.touchOnly{ display: flex; }
+body.touch #help dl dd.touchOnly{ display: block; }
+body.touch #help dl .deskOnly{ display: none; }
+
+#joy{
+  position: fixed; z-index: 6; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+  background: rgba(255,255,255,0.14); border: 1.5px solid rgba(255,255,255,0.45);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  pointer-events: none; display: none;
+}
+#joy i{
+  position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
+  background: rgba(255,255,255,0.85); box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+#touchHint{
+  left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); transform: translateX(-50%);
+  padding: 9px 14px; border-radius: 999px; font-size: 13px; white-space: nowrap; display: none;
+}
+body.touch #touchHint{ display: block; }
+
+#start{
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 20px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  background: var(--scrim); transition: opacity .5s ease;
+}
+#start.gone{ opacity: 0; pointer-events: none; }
+#card{
+  width: min(440px, 100%); padding: 28px 28px 24px; border-radius: 22px; background: var(--glass-strong);
+  max-height: 100%; overflow: auto;
+}
+#card h1{ font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 32px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.01em; }
+#card p{ margin: 0 0 18px; color: var(--ink-soft); font-size: 15px; line-height: 1.5; }
+#card .controls{ display: grid; grid-template-columns: auto 1fr; gap: 9px 12px; align-items: center; font-size: 14px; margin: 0 0 22px; }
+#card .controls dt{ display: flex; gap: 4px; }
+#card .controls dd{ margin: 0; color: var(--ink-soft); }
+#card .controls .touchOnly{ display: none; }
+body.touch #card .controls dt.touchOnly{ display: flex; }
+body.touch #card .controls dd.touchOnly{ display: block; }
+body.touch #card .controls .deskOnly{ display: none; }
+#go{ width: 100%; height: 50px; font-size: 16px; justify-content: center; }
+#go:disabled{ opacity: .6; cursor: progress; }
+#status{ margin-top: 10px; font-size: 13px; color: var(--ink-soft); text-align: center; min-height: 18px; }
+
+@media (max-width: 640px){
+  #map{ width: 124px; height: 96px; }
+  #mapWrap{ padding: 6px; border-radius: 12px; }
+  #room{ font-size: 13px; }
+  #card{ padding: 22px 20px 20px; }
+  #card h1{ font-size: 27px; }
+}
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="view" tabindex="0" aria-label="3D view of the house"></canvas>
+
+<div id="room" class="hud glass hidden"><span class="dot"></span><span id="roomName" aria-live="polite">Living room</span><span class="rsep"></span><button id="clockBtn" type="button" aria-label="Time: normal speed. Tap to change."><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="clockTxt">--:--</span></button></div>
+<div id="mapWrap" class="hud glass hidden"><canvas id="map" width="364" height="280" aria-label="Floor plan with your position and the cat"></canvas></div>
+<div id="cross" class="hud hidden"></div>
+<div id="prompt" class="hud glass hidden"><span class="key">E</span><span id="promptText">Pet Mochi</span></div>
+<div id="shop" class="glass hidden" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+  <header><div><h2 id="shopTitle">Shop</h2><p id="shopSub"></p></div><span id="shopMoney">$0</span><button id="shopClose" type="button" aria-label="Close the shop">×</button></header>
+  <div id="shopList"></div>
+  <footer>Esc or × to leave. Things you buy go straight into your hands, or onto the counter if your hands are full.</footer>
+</div>
+<div id="finds" class="hud glass hidden" aria-live="polite"></div>
+<div id="heldBar" class="hud glass hidden" aria-live="polite"><span>Holding <b id="heldName">item</b></span><span class="sep deskOnly"></span><span class="deskOnly"><span class="key">F</span> <span id="heldVerb">Use</span></span><span class="deskOnly" id="heldAlt"><span class="key">R</span> <span id="heldAltLabel"></span></span><span class="deskOnly"><span class="key">G</span> Throw</span><span class="deskOnly"><span class="key">Q</span> Put down</span></div>
+<div id="toast" class="hud glass hidden" role="status" aria-live="polite"></div>
+<div id="touchHint" class="hud glass hidden">Drag on the left to walk, anywhere else to look</div>
+
+<div id="hint" class="hud glass hidden">
+  <span><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> Walk</span>
+  <span><span class="key">Mouse</span> Look</span>
+  <span><span class="key">Shift</span> Run</span>
+  <span><span class="key">E</span> Use</span>
+  <span><span class="key">F</span> Use item</span>
+  <span><span class="key">C</span> Crouch</span>
+  <span><span class="key">Space</span> Jump</span>
+  <span><span class="key">N</span> Skip time</span>
+</div>
+
+<div id="help" class="hud glass hidden" role="dialog" aria-label="Controls">
+  <h2>Controls</h2>
+  <dl>
+    <dt class="deskOnly"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></dt><dd class="deskOnly">Walk</dd>
+    <dt class="deskOnly"><span class="key">←</span><span class="key">→</span></dt><dd class="deskOnly">Turn</dd>
+    <dt class="deskOnly"><span class="key">Mouse</span></dt><dd class="deskOnly">Click the view to look with the mouse, or drag</dd>
+    <dt class="deskOnly"><span class="key">Esc</span></dt><dd class="deskOnly">Release the mouse</dd>
+    <dt class="deskOnly"><span class="key">Shift</span></dt><dd class="deskOnly">Run</dd>
+    <dt class="deskOnly"><span class="key">E</span></dt><dd class="deskOnly">Use what you're looking at: open doors and drawers, flip switches, sit, pet Mochi</dd>
+    <dt class="deskOnly"><span class="key">F</span></dt><dd class="deskOnly">Use the item you're holding (or click)</dd>
+    <dt class="deskOnly"><span class="key">Q</span></dt><dd class="deskOnly">Put the item down where you're looking</dd>
+    <dt class="deskOnly"><span class="key">G</span></dt><dd class="deskOnly">Throw the item (or right-click)</dd>
+    <dt class="deskOnly"><span class="key">C</span></dt><dd class="deskOnly">Crouch (again to stand); Space jumps</dd>
+    <dt class="deskOnly"><span class="key">N</span></dt><dd class="deskOnly">Skip ahead to evening or morning</dd>
+    <dt class="deskOnly"><span class="key">T</span></dt><dd class="deskOnly">Change how fast time passes (or click the clock)</dd>
+    <dt class="deskOnly"><span class="key">M</span></dt><dd class="deskOnly">Show or hide the map</dd>
+    <dt class="touchOnly"><span class="key">Left</span></dt><dd class="touchOnly">Drag to walk</dd>
+    <dt class="touchOnly"><span class="key">Right</span></dt><dd class="touchOnly">Drag to look around</dd>
+    <dt class="touchOnly"><span class="key">Action</span></dt><dd class="touchOnly">Appears when you look at something you can use</dd>
+  </dl>
+</div>
+
+<div id="tools" class="hud hidden">
+  <button id="petBtn" class="btn glass primary" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10m0-1a1.5 1.5 0 0 1 3 0v2m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.8a6 6 0 0 1-4.9-2.5L3.9 15.8a1.6 1.6 0 0 1 2.5-2L9 16"/></svg>
+    <span id="actLabel">Pet Mochi</span>
+  </button>
+  <button id="jumpBtn" class="btn glass touchBtn" type="button">Jump</button>
+  <button id="crouchBtn" class="btn glass touchBtn" type="button" aria-pressed="false">Crouch</button>
+  <button id="altBtn" class="btn glass" type="button"><span id="altLabel">Shape</span></button>
+  <button id="throwBtn" class="btn glass" type="button">Throw</button>
+  <button id="dropBtn" class="btn glass" type="button">Put down</button>
+  <button id="useBtn" class="btn glass primary" type="button"><span id="useLabel">Use</span></button>
+  <button id="nightBtn" class="btn glass" type="button" aria-pressed="false">
+    <svg id="icoMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg id="icoSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+    <span id="nightLabel">Night</span>
+  </button>
+  <button id="helpBtn" class="btn glass icon" type="button" aria-label="Show controls" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.3-2.6 3.9"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>
+  </button>
+</div>
+
+<div id="joy"><i></i></div>
+
+<div id="start">
+  <div id="card" class="glass">
+    <h1>Mochi's house</h1>
+    <p>A two-bedroom home with an open living room, kitchen and dining area. Mochi, an orange tabby, wanders between her favourite spots. Open doors, drawers and cupboards, flip the lights, sit down, run a bath, pick things up and play with Mochi, put your shoes on at the rack by the door, dig the garden for treasure, then sell it at the shops across the street.</p>
+    <dl class="controls">
+      <dt class="deskOnly"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></dt><dd class="deskOnly">Walk, hold Shift to run</dd>
+      <dt class="deskOnly"><span class="key">Mouse</span></dt><dd class="deskOnly">Click the view to look around, Esc to release</dd>
+      <dt class="deskOnly"><span class="key">E</span></dt><dd class="deskOnly">Use what you're looking at: open doors and drawers, flip switches, sit, pet Mochi</dd>
+      <dt class="deskOnly"><span class="key">F</span></dt><dd class="deskOnly">Use the item you're holding (or click)</dd>
+    <dt class="deskOnly"><span class="key">Q</span></dt><dd class="deskOnly">Put the item down where you're looking</dd>
+    <dt class="deskOnly"><span class="key">G</span></dt><dd class="deskOnly">Throw the item (or right-click)</dd>
+    <dt class="deskOnly"><span class="key">C</span></dt><dd class="deskOnly">Crouch (again to stand); Space jumps</dd>
+    <dt class="deskOnly"><span class="key">N</span></dt><dd class="deskOnly">Skip ahead to evening or morning</dd>
+    <dt class="deskOnly"><span class="key">T</span></dt><dd class="deskOnly">Change how fast time passes (or click the clock)</dd>
+      <dt class="touchOnly"><span class="key">Left</span></dt><dd class="touchOnly">Drag on the left side to walk</dd>
+      <dt class="touchOnly"><span class="key">Right</span></dt><dd class="touchOnly">Drag anywhere else to look around</dd>
+      <dt class="touchOnly"><span class="key">Action</span></dt><dd class="touchOnly">Appears when you look at something you can use</dd>
+    </dl>
+    <button id="go" class="btn primary" type="button" disabled>Building the house…</button>
+    <div id="status" role="status"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
